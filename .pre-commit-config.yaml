@@ -11,11 +11,15 @@ repos:
       - id: ruff-format
         types_or: [ python, pyi ]
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0  # Use the sha / tag you want to point at
+  # Mypy — must run in your project environment via uv
+  - repo: local
     hooks:
-    - id: mypy
-      args: [ --strict, --ignore-missing-imports ]
+      - id: mypy
+        name: mypy
+        entry: uv run mypy
+        language: system
+        types: [python]
+        pass_filenames: false
 
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.10.0  # Use the latest version or a specific version
