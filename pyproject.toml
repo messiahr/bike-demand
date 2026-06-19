@@ -53,9 +53,52 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 
 [tool.commitizen]
-name = "cz_conventional_commits"
-tag_format = "$version"
-version_scheme = "pep440"
+name = "cz_customize"
+version = "0.1.0"
 version_provider = "uv"
 update_changelog_on_bump = true
 major_version_zero = true
+
+[tool.commitizen.customize]
+message_template = "{{change_type}}({{scope}}): {{message}}"
+example = "feat(ui): add user search page"
+schema = "<type>(<scope>): <body>"
+schema_pattern = "(feat|fix|refactor|perf|test|docs|style|chore|ci|build)\\((domain|service|repo|ui|schemas|db|config|deps|test)\\):(\\s.*)"
+
+[[tool.commitizen.customize.questions]]
+type = "list"
+name = "change_type"
+message = "Select the type of change"
+choices = [
+    { value = "feat",     name = "feat:     A new feature (MINOR bump)" },
+    { value = "fix",      name = "fix:      A bug fix (PATCH bump)" },
+    { value = "refactor", name = "refactor:  Rewrite without changing behavior" },
+    { value = "perf",     name = "perf:     Performance improvement" },
+    { value = "test",     name = "test:     Adding or fixing tests" },
+    { value = "docs",     name = "docs:     Documentation only" },
+    { value = "style",    name = "style:    Formatting, no logic change" },
+    { value = "chore",    name = "chore:    Maintenance, tooling, deps" },
+    { value = "ci",       name = "ci:       CI/CD configuration" },
+    { value = "build",    name = "build:    Build system changes" },
+]
+
+[[tool.commitizen.customize.questions]]
+type = "list"
+name = "scope"
+message = "Select the scope (architectural layer)"
+choices = [
+    { value = "ui",      name = "ui:      Streamlit pages, widgets, callbacks, session state" },
+    { value = "schemas", name = "schemas: DTOs, serializers, validation models" },
+    { value = "service", name = "service: Application services, use cases, orchestration" },
+    { value = "domain",  name = "domain:  Entities, value objects, business rules" },
+    { value = "repo",    name = "repo:    Data access, persistence, ORM queries" },
+    { value = "db",      name = "db:      Migrations, schema changes, indexes" },
+    { value = "config",  name = "config:  Settings, environment variables" },
+    { value = "deps",    name = "deps:    Package updates" },
+    { value = "test",    name = "test:    Test infrastructure, fixtures" },
+]
+
+[[tool.commitizen.customize.questions]]
+type = "input"
+name = "message"
+message = "Commit description (imperative mood, lowercase, no period)"

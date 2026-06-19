@@ -19,7 +19,6 @@ setup:
 
 commit:
 	@git add -A
-	@uv run pre-commit run --all-files
 	@uv run cz c
 
 run:
