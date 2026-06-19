@@ -60,6 +60,20 @@ def _list_bucket_files(prefix: str = "") -> list[str]:
     return keys
 
 
+def _sanitize_csv(path: Path) -> None:
+    """Remove null bytes from a CSV file in-place.
+
+    Some Hubway CSVs contain macOS extended attribute binary data
+    (com.apple.macl, com.apple.lastuseddate#PS, etc.) that leaked
+    into the CSV content during the original zip creation on macOS.
+    These null bytes crash Polars' Arrow FFI layer and will also
+    cause errors in PostgreSQL text columns.
+    """
+    content = path.read_bytes()
+    if b"\x00" in content:
+        path.write_bytes(content.replace(b"\x00", b""))
+
+
 def _download(url: str, dest: Path) -> Path:
     """Download a file from URL to dest, return the local path."""
 
@@ -93,8 +107,10 @@ def ingest_raw() -> None:
                     if not csv_path.exists():
                         with zf.open(name) as f:
                             csv_path.write_bytes(f.read())
+                        _sanitize_csv(csv_path)
         else:
             _download(f"{BUCKET_URL}{key}", data_dir / Path(key).name)
+            _sanitize_csv(data_dir / Path(key).name)
 
 
 if __name__ == "__main__":
