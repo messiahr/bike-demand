@@ -2,7 +2,7 @@
 
 PYTHON = python3
 
-APP_DIR=app
+APP_DIR= src/ui
 
 .PHONY: help setup run commit bump
 
