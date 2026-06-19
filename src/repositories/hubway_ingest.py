@@ -1,10 +1,10 @@
 """Repository for ingesting Hubway/Blue Bikes trip data from S3."""
 
-from pathlib import Path
-import requests
-import zipfile
-
 import xml.etree.ElementTree as ET
+import zipfile
+from pathlib import Path
+
+import requests
 
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
 
@@ -36,7 +36,7 @@ def _list_bucket_files(prefix: str = "") -> list[str]:
 
         root = ET.fromstring(response.content)
         # S3 XML uses namespace — extract it dynamically
-        ns = {"s3": root.tag.split("}")[0].strip("{")} if "}" in root.tag else ""
+        ns = {"s3": root.tag.split("}")[0].strip("{")} if "}" in root.tag else None
 
         contents = root.findall("s3:Contents", ns) if ns else root.findall("Contents")
         for content in contents:
@@ -72,7 +72,7 @@ def _download(url: str, dest: Path) -> Path:
     return dest
 
 
-def ingest_raw():
+def ingest_raw() -> None:
     """Ingest all files from the bucket in data/raw/zip and data/raw."""
     data_dir = Path("data/raw")
     keys = _list_bucket_files()
