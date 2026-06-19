@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.15.18
+    hooks:
+      # Run the linter.
+      - id: ruff-check
+        types_or: [ python, pyi, pyproject ]
+        args: [ --fix ]
+      # Run the formatter.
+      - id: ruff-format
+        types_or: [ python, pyi ]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.1.0  # Use the sha / tag you want to point at
+    hooks:
+    - id: mypy
+      args: [ --strict, --ignore-missing-imports ]
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.10.0  # Use the latest version or a specific version
+    hooks:
+      - id: commitizen
+        stages: [ commit-msg ]
