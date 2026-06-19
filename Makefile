@@ -4,7 +4,7 @@ PYTHON = python3
 
 APP_DIR= src/ui
 
-.PHONY: help setup run commit bump
+.PHONY: help setup run commit bump ingest
 
 .DEFAULT_GOAL = help
 
@@ -13,6 +13,7 @@ help:
 	@echo "make run	- run the streamlit app"
 	@echo "make commit	- interactive commit with commitizen"
 	@echo "make bump	- cut a new version"
+	@echo "make ingest	- update data/raw"
 
 setup:
 	@uv sync
@@ -26,3 +27,6 @@ run:
 
 bump:
 	@uv run cz bump --changelog
+
+ingest:
+	@uv run python -m src.repositories.hubway_ingest
