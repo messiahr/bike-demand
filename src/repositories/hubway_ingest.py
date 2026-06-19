@@ -5,6 +5,7 @@ import zipfile
 from pathlib import Path
 
 import requests
+from tqdm import tqdm
 
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
 
@@ -80,7 +81,7 @@ def ingest_raw() -> None:
     if not keys:
         raise ValueError("No files found in bucket.")
 
-    for key in keys:
+    for key in tqdm(keys, desc="󱄟 Ingesting", bar_format="{desc}: |{bar}| {percentage:.1f}%"):
         if ".zip" in key:
             zip_path = _download(f"{BUCKET_URL}{key}", data_dir / "zip" / Path(key).name)
             with zipfile.ZipFile(zip_path) as zf:
@@ -92,10 +93,8 @@ def ingest_raw() -> None:
                     if not csv_path.exists():
                         with zf.open(name) as f:
                             csv_path.write_bytes(f.read())
-                            print("saved: " + name)
         else:
             _download(f"{BUCKET_URL}{key}", data_dir / Path(key).name)
-            print("saved: " + key)
 
 
 if __name__ == "__main__":
