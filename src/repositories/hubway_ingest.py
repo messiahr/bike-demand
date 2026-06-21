@@ -7,6 +7,8 @@ from pathlib import Path
 import requests
 from tqdm import tqdm
 
+from config import RAW_DIR
+
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
 
 
@@ -89,7 +91,6 @@ def _download(url: str, dest: Path) -> Path:
 
 def ingest_raw() -> None:
     """Ingest all files from the bucket in data/raw/zip and data/raw."""
-    data_dir = Path("data/raw")
     keys = _list_bucket_files()
 
     if not keys:
@@ -97,20 +98,20 @@ def ingest_raw() -> None:
 
     for key in tqdm(keys, desc="󱄟 Ingesting", bar_format="{desc}: |{bar}| {percentage:.1f}%"):
         if ".zip" in key:
-            zip_path = _download(f"{BUCKET_URL}{key}", data_dir / "zip" / Path(key).name)
+            zip_path = _download(f"{BUCKET_URL}{key}", RAW_DIR / "zip" / Path(key).name)
             with zipfile.ZipFile(zip_path) as zf:
                 csv_names = [n for n in zf.namelist() if n.endswith(".csv")]
                 for name in csv_names:  # Extract CSV to data/raw/ (keeps raw directory as
                     csv_filename = Path(name).name
-                    csv_path = data_dir / csv_filename
+                    csv_path = RAW_DIR / csv_filename
                     csv_path.parent.mkdir(parents=True, exist_ok=True)
                     if not csv_path.exists():
                         with zf.open(name) as f:
                             csv_path.write_bytes(f.read())
                         _sanitize_csv(csv_path)
         else:
-            _download(f"{BUCKET_URL}{key}", data_dir / Path(key).name)
-            _sanitize_csv(data_dir / Path(key).name)
+            _download(f"{BUCKET_URL}{key}", RAW_DIR / Path(key).name)
+            _sanitize_csv(RAW_DIR / Path(key).name)
 
 
 if __name__ == "__main__":

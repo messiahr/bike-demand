@@ -2,8 +2,6 @@
 
 PYTHON = python3
 
-APP_DIR= src/ui
-
 .PHONY: help setup run commit bump ingest
 
 .DEFAULT_GOAL = help
@@ -23,7 +21,7 @@ commit:
 	@uv run cz c
 
 run:
-	@cd $(APP_DIR) && uv run streamlit run main.py
+	@uv run streamlit run main.py
 
 bump:
 	@uv run cz bump --changelog

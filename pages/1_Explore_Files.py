@@ -1,16 +1,13 @@
-from pathlib import Path
-
 import polars as pl
 import streamlit as st
 
+from config import RAW_DIR
+
 st.title("Hubway Data Explorer")
-
-data_dir = Path("data/raw")
-
 
 # List available CSVs
 
-csv_files = sorted(p for p in data_dir.glob("*.csv") if not p.name.startswith("."))
+csv_files = sorted(p for p in RAW_DIR.glob("*.csv") if not p.name.startswith("."))
 selected = st.selectbox("Choose a file", csv_files, format_func=lambda p: p.name)
 
 if selected:
