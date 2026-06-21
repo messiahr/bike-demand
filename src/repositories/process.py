@@ -1,6 +1,8 @@
 import polars as pl
-from config import RAW_DIR, PROCESSED_DIR
 from tqdm import tqdm
+
+from config import PROCESSED_DIR, RAW_DIR
+from pathlib import Path
 
 COLUMN_MAPPING = {
     # changing to match 2023/04 schema shift
@@ -44,7 +46,7 @@ CUSTOMER_MAP = {
 GENDER_MAP = {"0": "unknown", "1": "male", "2": "female"}
 
 
-def process_file(path) -> pl.DataFrame:
+def process_file(path: Path) -> pl.DataFrame:
     df = pl.read_csv(path, infer_schema_length=False)
     df = standardize_columns(df)
     df = clean_values(df)
