@@ -1,8 +1,9 @@
+from pathlib import Path
+
 import polars as pl
 from tqdm import tqdm
 
 from config import PROCESSED_DIR, RAW_DIR
-from pathlib import Path
 
 COLUMN_MAPPING = {
     # changing to match 2023/04 schema shift
