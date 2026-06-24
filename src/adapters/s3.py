@@ -1,18 +1,12 @@
-"""Repository for ingesting Hubway/Blue Bikes trip data from S3."""
+"""Repository for downloading from S3."""
 
 import xml.etree.ElementTree as ET
-import zipfile
 from pathlib import Path
 
 import requests
-from tqdm import tqdm
-
-from config import RAW_DIR
-
-BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
 
 
-def _list_bucket_files(prefix: str = "") -> list[str]:
+def list_bucket_files(bucket_url: str, prefix: str = "") -> list[str]:
     """List all object keys in the hubway-data S3 bucket.
 
     Uses the S3 REST API (ListObjectsV2), which returns XML for
@@ -34,7 +28,7 @@ def _list_bucket_files(prefix: str = "") -> list[str]:
         if continuation_token:
             params["continuation-token"] = continuation_token
 
-        response = requests.get(BUCKET_URL, params=params, timeout=30)
+        response = requests.get(bucket_url, params=params, timeout=30)
         response.raise_for_status()
 
         root = ET.fromstring(response.content)
@@ -62,7 +56,7 @@ def _list_bucket_files(prefix: str = "") -> list[str]:
     return keys
 
 
-def _sanitize_csv(path: Path) -> None:
+def sanitize_csv(path: Path) -> None:
     """Remove null bytes from a CSV file in-place.
 
     Some Hubway CSVs contain macOS extended attribute binary data
@@ -76,7 +70,7 @@ def _sanitize_csv(path: Path) -> None:
         path.write_bytes(content.replace(b"\x00", b""))
 
 
-def _download(url: str, dest: Path) -> Path:
+def download(url: str, dest: Path) -> Path:
     """Download a file from URL to dest, return the local path."""
 
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -87,32 +81,3 @@ def _download(url: str, dest: Path) -> Path:
     response.raise_for_status()
     dest.write_bytes(response.content)
     return dest
-
-
-def ingest_raw() -> None:
-    """Ingest all files from the bucket in data/raw/zip and data/raw."""
-    keys = _list_bucket_files()
-
-    if not keys:
-        raise ValueError("No files found in bucket.")
-
-    for key in tqdm(keys, desc="󱄟 Ingesting", bar_format="{desc}: |{bar}| {percentage:.1f}%"):
-        if ".zip" in key:
-            zip_path = _download(f"{BUCKET_URL}{key}", RAW_DIR / "zip" / Path(key).name)
-            with zipfile.ZipFile(zip_path) as zf:
-                csv_names = [n for n in zf.namelist() if n.endswith(".csv")]
-                for name in csv_names:  # Extract CSV to data/raw/ (keeps raw directory as
-                    csv_filename = Path(name).name
-                    csv_path = RAW_DIR / csv_filename
-                    csv_path.parent.mkdir(parents=True, exist_ok=True)
-                    if not csv_path.exists():
-                        with zf.open(name) as f:
-                            csv_path.write_bytes(f.read())
-                        _sanitize_csv(csv_path)
-        else:
-            _download(f"{BUCKET_URL}{key}", RAW_DIR / Path(key).name)
-            _sanitize_csv(RAW_DIR / Path(key).name)
-
-
-if __name__ == "__main__":
-    ingest_raw()
