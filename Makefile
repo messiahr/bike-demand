@@ -27,4 +27,4 @@ bump:
 	@uv run cz bump --changelog
 
 ingest:
-	@uv run python -m src.repositories.hubway_ingest
+	@uv run python -m src.pipelines.bluebikes.hubway_ingest

@@ -5,36 +5,36 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "commitizen>=4.16.3",
-    "mypy>=2.1.0",
-    "polars>=1.41.2",
-    "pre-commit>=4.6.0",
-    "ruff>=0.15.18",
-    "streamlit>=1.58.0",
-    "tool>=0.8.0",
-    "tqdm>=4.68.3",
-    "types-tqdm>=4.68.0.20260608",
+  "commitizen>=4.16.3",
+  "mypy>=2.1.0",
+  "polars>=1.41.2",
+  "pre-commit>=4.6.0",
+  "ruff>=0.15.18",
+  "streamlit>=1.58.0",
+  "tool>=0.8.0",
+  "tqdm>=4.68.3",
+  "types-tqdm>=4.68.0.20260608",
 ]
 
 [tool.ruff]
-target-version = "py313"   # match your requires-python
+target-version = "py313" # match your requires-python
 line-length = 100
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort (import sorting)
-    "N",    # pep8-naming
-    "UP",   # pyupgrade (modernize syntax)
-    "B",    # flake8-bugbear (likely bugs)
-    "C4",   # flake8-comprehensions
-    "SIM",  # flake8-simplify
-    "TCH",  # flake8-type-checking
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort (import sorting)
+  "N",   # pep8-naming
+  "UP",  # pyupgrade (modernize syntax)
+  "B",   # flake8-bugbear (likely bugs)
+  "C4",  # flake8-comprehensions
+  "SIM", # flake8-simplify
+  "TCH", # flake8-type-checking
 ]
 ignore = [
-    "E501",  # line too long (handled by the formatter)
+  "E501", # line too long (handled by the formatter)
 ]
 
 [tool.ruff.lint.isort]
@@ -54,6 +54,8 @@ check_untyped_defs = true
 no_implicit_reexport = true
 warn_redundant_casts = true
 warn_unused_ignores = true
+namespace_packages = true
+explicit_package_bases = true
 
 [tool.commitizen]
 name = "cz_customize"
@@ -63,26 +65,26 @@ update_changelog_on_bump = true
 major_version_zero = true
 
 [tool.commitizen.customize]
+schema_pattern = "^(feat|fix|refactor|perf|test|docs|style|chore|ci|build)\\((entrypoint|ingestion|validation|cleaning|features|domain|service|adapter|config|test)\\): .+$"
 message_template = "{{change_type}}({{scope}}): {{message}}"
 example = "feat(ui): add user search page"
 schema = "<type>(<scope>): <body>"
-schema_pattern = "(feat|fix|refactor|perf|test|docs|style|chore|ci|build)\\((domain|service|repo|ui|schemas|db|config|deps|test)\\):(\\s.*)"
 
 [[tool.commitizen.customize.questions]]
 type = "list"
 name = "change_type"
 message = "Select the type of change"
 choices = [
-    { value = "feat",     name = "feat:     A new feature (MINOR bump)" },
-    { value = "fix",      name = "fix:      A bug fix (PATCH bump)" },
-    { value = "refactor", name = "refactor:  Rewrite without changing behavior" },
-    { value = "perf",     name = "perf:     Performance improvement" },
-    { value = "test",     name = "test:     Adding or fixing tests" },
-    { value = "docs",     name = "docs:     Documentation only" },
-    { value = "style",    name = "style:    Formatting, no logic change" },
-    { value = "chore",    name = "chore:    Maintenance, tooling, deps" },
-    { value = "ci",       name = "ci:       CI/CD configuration" },
-    { value = "build",    name = "build:    Build system changes" },
+  { value = "feat", name = "feat:     A new feature (MINOR bump)" },
+  { value = "fix", name = "fix:      A bug fix (PATCH bump)" },
+  { value = "refactor", name = "refactor:  Rewrite without changing behavior" },
+  { value = "perf", name = "perf:     Performance improvement" },
+  { value = "test", name = "test:     Adding or fixing tests" },
+  { value = "docs", name = "docs:     Documentation only" },
+  { value = "style", name = "style:    Formatting, no logic change" },
+  { value = "chore", name = "chore:    Maintenance, tooling, deps" },
+  { value = "ci", name = "ci:       CI/CD configuration" },
+  { value = "build", name = "build:    Build system changes" },
 ]
 
 [[tool.commitizen.customize.questions]]
@@ -90,15 +92,16 @@ type = "list"
 name = "scope"
 message = "Select the scope (architectural layer)"
 choices = [
-    { value = "ui",      name = "ui:      Streamlit pages, widgets, callbacks, session state" },
-    { value = "schemas", name = "schemas: DTOs, serializers, validation models" },
-    { value = "service", name = "service: Application services, use cases, orchestration" },
-    { value = "domain",  name = "domain:  Entities, value objects, business rules" },
-    { value = "repo",    name = "repo:    Data access, persistence, ORM queries" },
-    { value = "db",      name = "db:      Migrations, schema changes, indexes" },
-    { value = "config",  name = "config:  Settings, environment variables" },
-    { value = "deps",    name = "deps:    Package updates" },
-    { value = "test",    name = "test:    Test infrastructure, fixtures" },
+  { value = "entrypoint", name = "entrypoint: Train/predict commands, scheduled jobs" },
+  { value = "ingestion", name = "ingestion: Data loading from files, APIs, databases" },
+  { value = "validation", name = "validation: Pandera schemas, quality checks" },
+  { value = "cleaning", name = "cleaning:  Normalization, ID standardization, type coercion" },
+  { value = "features", name = "features:  Feature engineering and transformations" },
+  { value = "domain", name = "domain:    Business concepts and rules" },
+  { value = "service", name = "service:   Pipeline orchestration, training, inference" },
+  { value = "adapter", name = "adapter:   External systems and persistence" },
+  { value = "config", name = "config:    Settings and environment variables" },
+  { value = "test", name = "test:      Tests and fixtures" },
 ]
 
 [[tool.commitizen.customize.questions]]
