@@ -12,8 +12,27 @@ from src.adapters.s3 import download, list_bucket_files, sanitize_csv
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
 STATIONS_CSV = "Hubway_Stations_as_of_July_2017.csv"
 
+# changing to match 2023/04 schema shift
+COLUMN_MAPPING = {
+    "tripduration": "trip_duration",
+    "starttime": "started_at",
+    "stoptime": "ended_at",
+    "start station id": "start_station_id",
+    "start station name": "start_station_name",
+    "start station latitude": "start_lat",
+    "start station longitude": "start_lng",
+    "end station id": "end_station_id",
+    "end station name": "end_station_name",
+    "end station latitude": "end_lat",
+    "end station longitude": "end_lng",
+    "bikeid": "bike_id",
+    "usertype": "member_casual",
+    "birth year": "birth_year",
+    "postal code": "postal_code",
+}
 
-class AbstractRawRepo(abc.ABC):
+
+class AbstractRawTripRepo(abc.ABC):
     """Abstract base class for a raw data repository for Bluebikes data.
 
     This class returns builders when possible to take advantage of lazy evaluation.
@@ -32,7 +51,7 @@ class AbstractRawRepo(abc.ABC):
         raise NotImplementedError
 
 
-class RawRepo(AbstractRawRepo):
+class RawTripRepo(AbstractRawTripRepo):
     def update(self) -> None:
         """Ingest all files from the bucket in data/raw/zip and data/raw."""
         keys = list_bucket_files(BUCKET_URL)
@@ -58,17 +77,45 @@ class RawRepo(AbstractRawRepo):
                 sanitize_csv(RAW_DIR / Path(key).name)
 
     def get_trips_builder(self) -> Callable[[], pl.LazyFrame]:
-        def trips_builder() -> pl.LazyFrame:
-            return pl.concat(
-                [
-                    # \N is an SQLite artifact
-                    pl.scan_csv(path, null_values=["\\N"])
-                    for path in RAW_DIR.glob("*.csv")
-                    if "trip" in path.name and not path.name.startswith(".")
-                ],
-                rechunk=True,
-                how="diagonal_relaxed",
+        def _scan_files() -> list[pl.LazyFrame]:
+            return [
+                # \N is an SQLite artifact
+                pl.scan_csv(path, null_values=["\\N"]).rename(COLUMN_MAPPING, strict=False)
+                for path in RAW_DIR.glob("*.csv")
+                if "trip" in path.name and not path.name.startswith(".")
+            ]
+
+        def _normalize_columns(lf: pl.LazyFrame) -> pl.LazyFrame:
+            return lf.rename(COLUMN_MAPPING, strict=False)
+
+        def _clean_datetimes(lf: pl.LazyFrame) -> pl.LazyFrame:
+            return lf.with_columns(
+                pl.col("started_at").str.strptime(
+                    pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False
+                ),
+                pl.col("ended_at").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False),
             )
+
+        def trips_builder() -> pl.LazyFrame:
+            lf = (
+                pl.concat(_scan_files(), rechunk=True, how="diagonal_relaxed")
+                .pipe(_normalize_columns)
+                .pipe(_clean_datetimes)
+                .select(
+                    [
+                        "started_at",
+                        "ended_at",
+                        "start_station_id",
+                        "end_station_id",
+                        "member_casual",
+                        "birth_year",
+                        "gender",
+                        "postal_code",
+                    ]
+                )
+            )
+
+            return lf
 
         return trips_builder
 
