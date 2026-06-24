@@ -12,12 +12,12 @@ help:
 	@echo "make commit	- interactive commit with commitizen"
 	@echo "make bump	- cut a new version"
 	@echo "make ingest	- update data/raw"
+	@echo "make lint	- run ruff and mypy"
 
 setup:
 	@uv sync
 
 commit:
-	@git add -A
 	@uv run cz c
 
 run:
@@ -28,3 +28,8 @@ bump:
 
 ingest:
 	@uv run python -m src.pipelines.bluebikes.hubway_ingest
+
+lint:
+	@uv run ruff format
+	@uv run ruff check --fix src tests
+	@uv run mypy src tests --ignore-missing-imports
