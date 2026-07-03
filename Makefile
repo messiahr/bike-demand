@@ -21,4 +21,4 @@ run:
 lint:
 	@uv run ruff format
 	@uv run ruff check --fix src tests
-	@uv run mypy src tests --ignore-missing-imports
+	@uv run mypy . --ignore-missing-imports
