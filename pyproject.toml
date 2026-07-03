@@ -3,14 +3,16 @@ name = "bike-demand"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
-  "commitizen>=4.16.3",
-  "mypy>=2.1.0",
+  "matplotlib>=3.11.0",
+  "meteostat>=2.1.4",
   "pandera>=0.32.0",
   "polars>=1.41.2",
   "pre-commit>=4.6.0",
-  "ruff>=0.15.18",
+  "pytest>=9.1.1",
+  "pytest-coverage>=0.0",
+  "rapidfuzz>=3.14.5",
   "streamlit>=1.58.0",
   "tool>=0.8.0",
   "tqdm>=4.68.3",
@@ -58,54 +60,9 @@ warn_unused_ignores = true
 namespace_packages = true
 explicit_package_bases = true
 
-[tool.commitizen]
-name = "cz_customize"
-version = "0.1.0"
-version_provider = "uv"
-update_changelog_on_bump = true
-major_version_zero = true
-
-[tool.commitizen.customize]
-schema_pattern = "^(feat|fix|refactor|perf|test|docs|style|chore|ci|build)\\((entrypoint|ingestion|validation|cleaning|features|domain|service|adapter|config|test)\\): .+$"
-message_template = "{{change_type}}({{scope}}): {{message}}"
-example = "feat(ui): add user search page"
-schema = "<type>(<scope>): <body>"
-
-[[tool.commitizen.customize.questions]]
-type = "list"
-name = "change_type"
-message = "Select the type of change"
-choices = [
-  { value = "feat", name = "feat:     A new feature (MINOR bump)" },
-  { value = "fix", name = "fix:      A bug fix (PATCH bump)" },
-  { value = "refactor", name = "refactor:  Rewrite without changing behavior" },
-  { value = "perf", name = "perf:     Performance improvement" },
-  { value = "test", name = "test:     Adding or fixing tests" },
-  { value = "docs", name = "docs:     Documentation only" },
-  { value = "style", name = "style:    Formatting, no logic change" },
-  { value = "chore", name = "chore:    Maintenance, tooling, deps" },
-  { value = "ci", name = "ci:       CI/CD configuration" },
-  { value = "build", name = "build:    Build system changes" },
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "pre-commit>=4.6.0",
+    "ruff>=0.15.18",
 ]
-
-[[tool.commitizen.customize.questions]]
-type = "list"
-name = "scope"
-message = "Select the scope (architectural layer)"
-choices = [
-  { value = "entrypoint", name = "entrypoint: Train/predict commands, scheduled jobs" },
-  { value = "ingestion", name = "ingestion: Data loading from files, APIs, databases" },
-  { value = "validation", name = "validation: Pandera schemas, quality checks" },
-  { value = "cleaning", name = "cleaning:  Normalization, ID standardization, type coercion" },
-  { value = "features", name = "features:  Feature engineering and transformations" },
-  { value = "domain", name = "domain:    Business concepts and rules" },
-  { value = "service", name = "service:   Pipeline orchestration, training, inference" },
-  { value = "adapter", name = "adapter:   External systems and persistence" },
-  { value = "config", name = "config:    Settings and environment variables" },
-  { value = "test", name = "test:      Tests and fixtures" },
-]
-
-[[tool.commitizen.customize.questions]]
-type = "input"
-name = "message"
-message = "Commit description (imperative mood, lowercase, no period)"

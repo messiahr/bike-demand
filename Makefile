@@ -8,26 +8,15 @@ PYTHON = python3
 
 help:
 	@echo "Available commands:"
+	@echo "make setup	 - set up the virtual environment and install dependencies"
 	@echo "make run	- run the streamlit app"
-	@echo "make commit	- interactive commit with commitizen"
-	@echo "make bump	- cut a new version"
-	@echo "make ingest	- update data/raw"
 	@echo "make lint	- run ruff and mypy"
 
 setup:
 	@uv sync
 
-commit:
-	@uv run cz c
-
 run:
-	@uv run streamlit run main.py
-
-bump:
-	@uv run cz bump --changelog
-
-ingest:
-	@uv run python -m src.pipelines.bluebikes.hubway_ingest
+	@uv run python -m streamlit run main.py
 
 lint:
 	@uv run ruff format
