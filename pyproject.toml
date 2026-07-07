@@ -18,7 +18,6 @@ dependencies = [
   "tqdm>=4.68.3",
   "types-tqdm>=4.68.0.20260608",
 ]
-
 [tool.ruff]
 target-version = "py313" # match your requires-python
 line-length = 100
@@ -39,13 +38,10 @@ select = [
 ignore = [
   "E501", # line too long (handled by the formatter)
 ]
-
 [tool.ruff.lint.isort]
 known-first-party = ["my_project"]
-
 [tool.ruff.format]
 quote-style = "double"
-
 [tool.mypy]
 python_version = "3.13"
 strict = true
@@ -59,10 +55,5 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 namespace_packages = true
 explicit_package_bases = true
-
 [dependency-groups]
-dev = [
-    "mypy>=2.1.0",
-    "pre-commit>=4.6.0",
-    "ruff>=0.15.18",
-]
+dev = ["mypy>=2.1.0", "pre-commit>=4.6.0", "ruff>=0.15.18"]
