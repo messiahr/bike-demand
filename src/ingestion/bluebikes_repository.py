@@ -3,7 +3,6 @@ import zipfile
 from pathlib import Path
 
 import polars as pl
-from tqdm import tqdm
 
 from config import RAW_DIR
 from src.ingestion.s3 import download, list_bucket_files, sanitize_csv
@@ -50,7 +49,7 @@ class AbstractRawTripRepo(abc.ABC):
         raise NotImplementedError
 
 
-class BlueBikesRepo(AbstractRawTripRepo):
+class BlueBikesRepository(AbstractRawTripRepo):
     def update(self) -> None:
         """Ingest all files from the bucket in data/raw/zip and data/raw."""
         keys = list_bucket_files(BUCKET_URL)
@@ -58,7 +57,7 @@ class BlueBikesRepo(AbstractRawTripRepo):
         if not keys:
             raise ValueError("No files found in bucket.")
 
-        for key in tqdm(keys, desc="󱄟 Ingesting", bar_format="{desc}: |{bar}| {percentage:.1f}%"):
+        for key in keys:
             if ".zip" in key:
                 zip_path = download(f"{BUCKET_URL}{key}", RAW_DIR / "zip" / Path(key).name)
                 with zipfile.ZipFile(zip_path) as zf:
@@ -97,18 +96,6 @@ class BlueBikesRepo(AbstractRawTripRepo):
             pl.concat(self._scan_files(), rechunk=True, how="diagonal_relaxed")
             .pipe(self._normalize_columns)
             .pipe(self._clean_datetimes)
-            .select(
-                [
-                    "started_at",
-                    "ended_at",
-                    "start_station_name",
-                    "end_station_name",
-                    "member_casual",
-                    "birth_year",
-                    "gender",
-                    "postal_code",
-                ]
-            )
         )
 
         return lf
