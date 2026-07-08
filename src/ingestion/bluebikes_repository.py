@@ -8,10 +8,14 @@ from config import RAW_DIR
 from src.ingestion.s3 import download, list_bucket_files, sanitize_csv
 
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
-STATIONS_CSV = "Hubway_Stations_as_of_July_2017.csv"
+STATIONS_CSVS = [
+    "Hubway_Stations_as_of_July_2017.csv",
+    "Hubway_Stations_2011_2016.csv",
+    "previous_Hubway_Stations_as_of_July_2017.csv",
+]
 
-# changing to match 2023/04 schema shift
-COLUMN_MAPPING = {
+# changing to account for 2023/04 schema shift
+TRIP_COLUMN_MAPPING = {
     "tripduration": "trip_duration",
     "starttime": "started_at",
     "stoptime": "ended_at",
@@ -27,6 +31,21 @@ COLUMN_MAPPING = {
     "usertype": "member_casual",
     "birth year": "birth_year",
     "postal code": "postal_code",
+}
+
+STATION_COLUMN_MAPPING = {
+    "Number": "station_id",
+    "Name": "station_name",
+    "Latitude": "lat",
+    "Longitude": "lng",
+    "Public": "public",
+    "District": "district",
+    "Total docks": "total_docks",
+    "Station": "station_name",
+    "Station ID": "station_id",
+    "publiclyExposed": "public",
+    "Municipality": "district",
+    "# of Docks": "total_docks",
 }
 
 
@@ -77,32 +96,35 @@ class BlueBikesRepository(AbstractRawTripRepo):
     def _scan_files(self) -> list[pl.LazyFrame]:
         return [
             # \N is an SQLite artifact
-            pl.scan_csv(path, null_values=["\\N"]).rename(COLUMN_MAPPING, strict=False)
+            pl.scan_csv(path, null_values=["\\N"]).rename(TRIP_COLUMN_MAPPING, strict=False)
             for path in RAW_DIR.glob("*.csv")
             if "trip" in path.name and not path.name.startswith(".")
         ]
 
-    def _normalize_columns(self, lf: pl.LazyFrame) -> pl.LazyFrame:
-        return lf.rename(COLUMN_MAPPING, strict=False)
-
-    def _clean_datetimes(self, lf: pl.LazyFrame) -> pl.LazyFrame:
-        return lf.with_columns(
-            pl.col("started_at").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False),
-            pl.col("ended_at").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False),
-        )
-
     def trips_builder(self) -> pl.LazyFrame:
         lf = (
             pl.concat(self._scan_files(), rechunk=True, how="diagonal_relaxed")
-            .pipe(self._normalize_columns)
-            .pipe(self._clean_datetimes)
+            .rename(TRIP_COLUMN_MAPPING, strict=False)
+            .with_columns(
+                pl.col("started_at").str.strptime(
+                    pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False
+                ),
+                pl.col("ended_at").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False),
+            )
         )
 
         return lf
 
     def stations_builder(self) -> pl.LazyFrame:
-        return pl.scan_csv(
-            # \N is an SQLite artifact
-            RAW_DIR / STATIONS_CSV,
-            null_values=["\\N"],
+        return pl.concat(
+            [
+                pl.scan_csv(
+                    # \N is an SQLite artifact
+                    RAW_DIR / file,
+                    null_values=["\\N"],
+                ).rename(STATION_COLUMN_MAPPING, strict=False)
+                for file in STATIONS_CSVS
+            ],
+            rechunk=True,
+            how="diagonal_relaxed",
         )

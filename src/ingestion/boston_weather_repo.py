@@ -6,13 +6,13 @@ import meteostat as ms
 import polars as pl
 
 
-class AbstractBostonWeatherRepo(abc.ABC):
+class AbstractWeatherRepository(abc.ABC):
     @abc.abstractmethod
     def get_weather_data(self, start_date: date, end_date: date) -> pl.DataFrame:
         raise NotImplementedError("Subclasses must implement this method.")
 
 
-class BostonWeatherRepo(AbstractBostonWeatherRepo):
+class WeatherRepository(AbstractWeatherRepository):
     def get_weather_data(self, start_date: date, end_date: date) -> pl.DataFrame:
         boston = ms.Point(42.36, -71.06)  # Boston, MA
         stations = ms.stations.nearby(boston, limit=4)
