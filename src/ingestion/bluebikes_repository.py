@@ -1,17 +1,31 @@
 import abc
 import zipfile
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import polars as pl
 
-from config import RAW_DIR
+from config import PROCESSED_DIR, RAW_DIR
 from src.ingestion.s3 import download, list_bucket_files, sanitize_csv
 
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
-STATIONS_CSVS = [
-    "Hubway_Stations_as_of_July_2017.csv",
-    "Hubway_Stations_2011_2016.csv",
-    "previous_Hubway_Stations_as_of_July_2017.csv",
+
+
+# lists station files and the ranges of time they represent
+# as of July 2026, the new "Hubway" file was last modified October 30th 2019
+# BlueBikes began operations July 28th 2011
+@dataclass(frozen=True)
+class StationSnapshot:
+    version: int
+    filename: str
+    effective_from: datetime
+
+
+STATION_SNAPSHOTS = [
+    StationSnapshot(0, "Hubway_Stations_2011_2016.csv", datetime(2011, 7, 28)),
+    StationSnapshot(1, "previous_Hubway_Stations_as_of_July_2017.csv", datetime(2017, 7, 1)),
+    StationSnapshot(2, "Hubway_Stations_as_of_July_2017.csv", datetime(2019, 10, 30)),
 ]
 
 # changing to account for 2023/04 schema shift
@@ -60,17 +74,93 @@ class AbstractRawTripRepo(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def trips_builder(self) -> pl.LazyFrame:
+    def trips(self) -> pl.LazyFrame:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def stations_builder(self) -> pl.LazyFrame:
+    def stations(self) -> pl.LazyFrame:
         raise NotImplementedError
 
 
 class BlueBikesRepository(AbstractRawTripRepo):
-    def update(self) -> None:
-        """Ingest all files from the bucket in data/raw/zip and data/raw."""
+    def __init__(self) -> None:
+        self.stations_path = PROCESSED_DIR / "all_stations.parquet"
+        self.trips_path = PROCESSED_DIR / "all_trips.parquet"
+
+    def stations(self) -> pl.LazyFrame:
+        return pl.scan_parquet(self.stations_path)
+
+    def trips(self) -> pl.LazyFrame:
+        return pl.scan_parquet(self.trips_path)
+
+    # Exposes station versioning information.
+
+    def get_station_version_expr(self, time_col: str) -> pl.Expr:
+        snapshots = sorted(
+            STATION_SNAPSHOTS,
+            key=lambda s: s.effective_from,
+        )
+
+        expr = pl.lit(snapshots[0].version)
+
+        for snapshot in snapshots[1:]:
+            expr = (
+                pl.when(pl.col(time_col) >= snapshot.effective_from)
+                .then(snapshot.version)
+                .otherwise(expr)
+            )
+
+        return expr.alias("station_version")
+
+    # Code for ingesting and compiling files.
+
+    def _scan_files(self) -> list[pl.LazyFrame]:
+        return [
+            # \N is an SQLite artifact
+            pl.scan_csv(path, null_values=["\\N"])
+            for path in RAW_DIR.glob("*.csv")
+            if "trip" in path.name and not path.name.startswith(".")
+        ]
+
+    def update_trips(self) -> None:
+        pl.concat(
+            [
+                (
+                    lf.rename(TRIP_COLUMN_MAPPING, strict=False).with_columns(
+                        pl.col("started_at").str.strptime(
+                            pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False
+                        ),
+                        pl.col("ended_at").str.strptime(
+                            pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False
+                        ),
+                    )
+                )
+                for lf in self._scan_files()
+            ],
+            rechunk=True,
+            how="diagonal_relaxed",
+        ).sink_parquet(self.trips_path)
+
+    def update_stations(self) -> None:
+        pl.concat(
+            [
+                pl.scan_csv(
+                    # \N is an SQLite artifact
+                    RAW_DIR / snapshot.filename,
+                    null_values=["\\N"],
+                )
+                .rename(STATION_COLUMN_MAPPING, strict=False)
+                .with_columns(
+                    pl.lit(snapshot.version).alias("station_version"),
+                    pl.lit(snapshot.effective_from).alias("effective_from"),
+                )
+                for snapshot in STATION_SNAPSHOTS
+            ],
+            rechunk=True,
+            how="diagonal_relaxed",
+        ).sink_parquet(self.stations_path)
+
+    def download(self) -> None:
         keys = list_bucket_files(BUCKET_URL)
 
         if not keys:
@@ -93,38 +183,8 @@ class BlueBikesRepository(AbstractRawTripRepo):
                 download(f"{BUCKET_URL}{key}", RAW_DIR / Path(key).name)
                 sanitize_csv(RAW_DIR / Path(key).name)
 
-    def _scan_files(self) -> list[pl.LazyFrame]:
-        return [
-            # \N is an SQLite artifact
-            pl.scan_csv(path, null_values=["\\N"]).rename(TRIP_COLUMN_MAPPING, strict=False)
-            for path in RAW_DIR.glob("*.csv")
-            if "trip" in path.name and not path.name.startswith(".")
-        ]
-
-    def trips_builder(self) -> pl.LazyFrame:
-        lf = (
-            pl.concat(self._scan_files(), rechunk=True, how="diagonal_relaxed")
-            .rename(TRIP_COLUMN_MAPPING, strict=False)
-            .with_columns(
-                pl.col("started_at").str.strptime(
-                    pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False
-                ),
-                pl.col("ended_at").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S%.f", strict=False),
-            )
-        )
-
-        return lf
-
-    def stations_builder(self) -> pl.LazyFrame:
-        return pl.concat(
-            [
-                pl.scan_csv(
-                    # \N is an SQLite artifact
-                    RAW_DIR / file,
-                    null_values=["\\N"],
-                ).rename(STATION_COLUMN_MAPPING, strict=False)
-                for file in STATIONS_CSVS
-            ],
-            rechunk=True,
-            how="diagonal_relaxed",
-        )
+    def update(self) -> None:
+        """Ingest all files from the bucket in data/raw/zip and data/raw."""
+        self.download()
+        self.update_trips()
+        self.update_stations()
