@@ -4,6 +4,7 @@ from prefect import flow, task
 from src.adapters.bluebikes_repository import BlueBikesRepository
 from src.adapters.boston_weather_repo import WeatherRepository
 from src.processing.merge_weather import merge_trips_with_weather
+from src.processing.standardize_bluebikes_data import standardize_stations
 
 
 @task
@@ -25,15 +26,22 @@ def weather_import(trips: pl.LazyFrame) -> pl.LazyFrame:
 
 
 @task
-def merge_weather(trips: pl.LazyFrame, weather: pl.LazyFrame) -> pl.LazyFrame:
-    return merge_trips_with_weather(trips, weather)
+def final_merges(
+    trips: pl.LazyFrame, stations: pl.LazyFrame, weather: pl.LazyFrame
+) -> pl.LazyFrame:
+    bb_repo = BlueBikesRepository()
+    station_version_expr = bb_repo.get_station_version_expr
+
+    trips_standardized = standardize_stations(trips, stations, station_version_expr)
+
+    return merge_trips_with_weather(trips_standardized, weather)
 
 
 @flow
 def main() -> pl.LazyFrame:
-    trips, _ = bluebikes_import()
+    trips, stations = bluebikes_import()
     weather = weather_import(trips)
-    merged = merge_weather(trips, weather)
+    merged = final_merges(trips, stations, weather)
     return merged
 
 

@@ -2,8 +2,15 @@ from collections.abc import Callable
 
 import polars as pl
 
-from config import PROCESSED_DIR
-from src.ingestion.bluebikes_repository import BlueBikesRepository
+CUSTOMER_MAPPING = {
+    "member": "member",
+    "casual": "casual",
+    "subscriber": "member",
+    "customer": "casual",
+}
+
+# matching ISO 5218
+GENDER_MAPPING = {"0": "unknown", "1": "male", "2": "female"}
 
 STATION_ALIASES = {
     "lafayette sq at mass ave main st columbia st": "mass ave lafayette sq",
@@ -89,6 +96,8 @@ def normalize_trips(
         station_version_expr("ended_at").alias("end_station_version"),
         pl.col("start_station_name").replace(station_mapping),
         pl.col("end_station_name").replace(station_mapping),
+        pl.col("usertype").replace(CUSTOMER_MAPPING),
+        pl.col("gender").replace(GENDER_MAPPING),
     )
 
 
@@ -114,24 +123,13 @@ def join_trips_and_stations(
     return result
 
 
-if __name__ == "__main__":
-    bb_repo = BlueBikesRepository()
-
-    bb_repo.update()
-    bb_stations = bb_repo.stations()
-    bb_trips = bb_repo.trips()
-
-    bb_station_version_expr = bb_repo.get_station_version_expr
-    bb_station_map = get_station_map(bb_stations)
-
-    bb_stations_modified = normalize_stations(station_mapping=bb_station_map, stations=bb_stations)
-
-    bb_trips_modified = normalize_trips(
-        station_version_expr=bb_station_version_expr, station_mapping=bb_station_map, trips=bb_trips
-    )
-
-    final = join_trips_and_stations(
-        trips_modified=bb_trips_modified, stations_modified=bb_stations_modified
-    )
-
-    final.sink_parquet(PROCESSED_DIR / "processed_trips.parquet")
+def standardize_stations(
+    trips: pl.LazyFrame,
+    stations: pl.LazyFrame,
+    station_version_expr: Callable[[str], pl.Expr],
+) -> pl.LazyFrame:
+    station_mapping = get_station_map(stations)
+    stations_modified = normalize_stations(station_mapping, stations)
+    trips_modified = normalize_trips(station_version_expr, station_mapping, trips)
+    standardized_trips = join_trips_and_stations(trips_modified, stations_modified)
+    return standardized_trips
