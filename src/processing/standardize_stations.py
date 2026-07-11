@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 import polars as pl
 
+from config import PROCESSED_DIR
 from src.ingestion.bluebikes_repository import BlueBikesRepository
 
 STATION_ALIASES = {
@@ -133,4 +134,4 @@ if __name__ == "__main__":
         trips_modified=bb_trips_modified, stations_modified=bb_stations_modified
     )
 
-    print(final.head(10).collect())
+    final.sink_parquet(PROCESSED_DIR / "processed_trips.parquet")
