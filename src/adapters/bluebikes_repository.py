@@ -7,7 +7,7 @@ from pathlib import Path
 import polars as pl
 
 from config import PROCESSED_DIR, RAW_DIR
-from src.ingestion.s3 import download, list_bucket_files, sanitize_csv
+from src.adapters.s3 import download, list_bucket_files, sanitize_csv
 
 BUCKET_URL = "https://s3.amazonaws.com/hubway-data/"
 
