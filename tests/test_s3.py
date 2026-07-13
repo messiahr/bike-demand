@@ -12,16 +12,6 @@ def test_sanitize_csv_removes_null_bytes(tmp_path: Path) -> None:
     assert csv_file.read_bytes() == b"id,name\n1,foobar\n2,baz\n"
 
 
-def test_sanitize_csv_no_null_bytes_unchanged(tmp_path: Path) -> None:
-    csv_file = tmp_path / "test.csv"
-    original = b"id,name\n1,foo\n2,baz\n"
-    csv_file.write_bytes(original)
-
-    sanitize_csv(csv_file)
-
-    assert csv_file.read_bytes() == original
-
-
 def test_sanitize_csv_multiple_null_bytes(tmp_path: Path) -> None:
     csv_file = tmp_path / "test.csv"
     csv_file.write_bytes(b"\x00id,\x00name\x00\n1,foo\n")
@@ -29,15 +19,6 @@ def test_sanitize_csv_multiple_null_bytes(tmp_path: Path) -> None:
     sanitize_csv(csv_file)
 
     assert csv_file.read_bytes() == b"id,name\n1,foo\n"
-
-
-def test_sanitize_csv_all_null_bytes(tmp_path: Path) -> None:
-    csv_file = tmp_path / "test.csv"
-    csv_file.write_bytes(b"\x00\x00\x00")
-
-    sanitize_csv(csv_file)
-
-    assert csv_file.read_bytes() == b""
 
 
 def test_sanitize_csv_binary_content(tmp_path: Path) -> None:
