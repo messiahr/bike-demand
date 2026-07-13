@@ -15,11 +15,11 @@ GENDER_MAPPING = {"0": "unknown", "1": "male", "2": "female"}
 STATION_ALIASES = {
     "lafayette sq at mass ave main st columbia st": "mass ave lafayette sq",
     "forsyth st at huntington ave": "northeastern u n parking lot",
-    "prudential center belvidere": "prudential center belvedere st",
+    "prudential ctr belvidere": "prudential center belvedere st",
     "harvard u gund hall at quincy st kirkland s": "harvard u gund hall at quincy st kirkland st",
     "mass ave at boylston st": "boylston st at mass ave",
     "commonwealth ave at griggs st": "allston green district griggs st at commonwealth ave",
-    "child street at brian p murphy staircase": "brian p murphy staircase at child street",
+    "child st at brian p murphy staircase": "brian p murphy staircase at child st",
 }
 
 LITERAL_REPLACEMENTS = {
