@@ -2,8 +2,8 @@ import polars as pl
 from prefect import flow, task
 
 from src.adapters.bluebikes_repository import BlueBikesRepository
-from src.adapters.boston_weather_repo import WeatherRepository
 from src.adapters.processed_data_repository import ProcessedDataRepository
+from src.adapters.weather_repository import WeatherRepository
 from src.processing.merge_weather import merge_trips_with_weather
 from src.processing.standardize_bluebikes_data import standardize_stations
 
