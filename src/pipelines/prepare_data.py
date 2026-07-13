@@ -3,6 +3,7 @@ from prefect import flow, task
 
 from src.adapters.bluebikes_repository import BlueBikesRepository
 from src.adapters.boston_weather_repo import WeatherRepository
+from src.adapters.processed_data_repository import ProcessedDataRepository
 from src.processing.merge_weather import merge_trips_with_weather
 from src.processing.standardize_bluebikes_data import standardize_stations
 
@@ -38,11 +39,13 @@ def final_merges(
 
 
 @flow
-def main() -> pl.LazyFrame:
+def main() -> None:
     trips, stations = bluebikes_import()
     weather = weather_import(trips)
     merged = final_merges(trips, stations, weather)
-    return merged
+
+    data_repo = ProcessedDataRepository()
+    data_repo.save(processed_data=merged)
 
 
 if __name__ == "__main__":
