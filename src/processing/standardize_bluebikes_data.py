@@ -91,14 +91,16 @@ def normalize_trips(
     station_mapping: dict[str, str],
     trips: pl.LazyFrame,
 ) -> pl.LazyFrame:
-    return trips.with_columns(
+    exprs: list[pl.Expr] = [
         station_version_expr("started_at").alias("start_station_version"),
         station_version_expr("ended_at").alias("end_station_version"),
         pl.col("start_station_name").replace(station_mapping),
         pl.col("end_station_name").replace(station_mapping),
-        pl.col("usertype").replace(CUSTOMER_MAPPING),
-        pl.col("gender").replace(GENDER_MAPPING),
-    )
+        pl.col("member_casual").replace(CUSTOMER_MAPPING),
+    ]
+    if "gender" in trips.columns:
+        exprs.append(pl.col("gender").replace(GENDER_MAPPING))
+    return trips.with_columns(exprs)
 
 
 def join_trips_and_stations(
@@ -131,5 +133,4 @@ def standardize_stations(
     station_mapping = get_station_map(stations)
     stations_modified = normalize_stations(station_mapping, stations)
     trips_modified = normalize_trips(station_version_expr, station_mapping, trips)
-    standardized_trips = join_trips_and_stations(trips_modified, stations_modified)
-    return standardized_trips
+    return join_trips_and_stations(trips_modified, stations_modified)
