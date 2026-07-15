@@ -2,7 +2,7 @@
 
 PYTHON = python3
 
-.PHONY: help setup run commit bump ingest
+.PHONY: help setup run train commit bump ingest
 
 .DEFAULT_GOAL = help
 
@@ -10,6 +10,7 @@ help:
 	@echo "Available commands:"
 	@echo "make setup	 - set up the virtual environment and install dependencies"
 	@echo "make run	- run the streamlit app"
+	@echo "make train	- run model training with Optuna + MLFlow"
 	@echo "make lint	- run ruff and mypy"
 
 setup:
@@ -17,6 +18,9 @@ setup:
 
 run:
 	@uv run python -m streamlit run main.py
+
+train:
+	@uv run python -m src.services.model_training
 
 lint:
 	@uv run ruff format

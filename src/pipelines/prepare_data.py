@@ -19,11 +19,15 @@ def bluebikes_import() -> tuple[pl.LazyFrame, pl.LazyFrame]:
 
 @task
 def weather_import(trips: pl.LazyFrame) -> pl.LazyFrame:
-    min_date = trips.select(pl.col("started_at").min()).collect().item().date()
-    max_date = trips.select(pl.col("ended_at").max()).collect().item().date()
+    bounds = trips.select(
+        pl.col("started_at").min().alias("min_date"),
+        pl.col("ended_at").max().alias("max_date"),
+    ).collect()
 
     repo = WeatherRepository()
-    return repo.get_weather_data(min_date, max_date).lazy()
+    return repo.get_weather_data(
+        bounds["min_date"].item().date(), bounds["max_date"].item().date()
+    ).lazy()
 
 
 @task

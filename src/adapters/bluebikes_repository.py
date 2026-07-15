@@ -42,7 +42,8 @@ TRIP_COLUMN_MAPPING = {
     "end station latitude": "end_lat",
     "end station longitude": "end_lng",
     "bikeid": "bike_id",
-    "usertype": "member_casual",
+    "usertype": "user_type",
+    "member_casual": "user_type",
     "birth year": "birth_year",
     "postal code": "postal_code",
 }
@@ -113,6 +114,14 @@ class BlueBikesRepository(AbstractRawTripRepo):
         return expr.alias("station_version")
 
     # Code for ingesting and compiling files.
+
+    @staticmethod
+    def _newer_than(parquet_path: Path, source_paths: list[Path]) -> bool:
+        """Return True if any source file is newer than the parquet (or parquet doesn't exist)."""
+        if not parquet_path.exists():
+            return True
+        parquet_mtime = parquet_path.stat().st_mtime
+        return any(p.stat().st_mtime > parquet_mtime for p in source_paths if p.exists())
 
     def _scan_files(self) -> list[pl.LazyFrame]:
         return [
@@ -186,5 +195,13 @@ class BlueBikesRepository(AbstractRawTripRepo):
     def update(self) -> None:
         """Ingest all files from the bucket in data/raw/zip and data/raw."""
         self.download()
-        self.update_trips()
-        self.update_stations()
+
+        trip_files = [
+            p for p in RAW_DIR.glob("*.csv") if "trip" in p.name and not p.name.startswith(".")
+        ]
+        if self._newer_than(self.trips_path, trip_files):
+            self.update_trips()
+
+        station_files = [RAW_DIR / s.filename for s in STATION_SNAPSHOTS]
+        if self._newer_than(self.stations_path, station_files):
+            self.update_stations()

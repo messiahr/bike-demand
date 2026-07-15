@@ -6,9 +6,11 @@ def merge_trips_with_weather(
     weather: pl.LazyFrame,
 ) -> pl.LazyFrame:
     trips_with_hour = trips.with_columns(
-        pl.col("started_at").dt.truncate("1h").alias("weather_hour")
+        pl.col("started_at").dt.truncate("1h").cast(pl.Datetime("ms")).alias("weather_hour")
     )
-    weather_renamed = weather.rename({"time": "weather_hour"})
+    weather_renamed = weather.rename({"time": "weather_hour"}).with_columns(
+        pl.col("weather_hour").cast(pl.Datetime("ms"))
+    )
 
     result = trips_with_hour.join(weather_renamed, on="weather_hour", how="left").drop(
         "weather_hour"

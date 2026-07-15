@@ -5,6 +5,8 @@ from pathlib import Path
 
 import requests
 
+CHUNK_SIZE = 8192
+
 
 def list_bucket_files(bucket_url: str, prefix: str = "") -> list[str]:
     """List all object keys in the hubway-data S3 bucket.
@@ -77,7 +79,9 @@ def download(url: str, dest: Path) -> Path:
     if dest.exists():
         return dest
 
-    response = requests.get(url, timeout=60)
+    response = requests.get(url, timeout=60, stream=True)
     response.raise_for_status()
-    dest.write_bytes(response.content)
+    with dest.open("wb") as f:
+        for chunk in response.iter_content(CHUNK_SIZE):
+            f.write(chunk)
     return dest

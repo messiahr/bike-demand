@@ -96,8 +96,8 @@ def normalize_trips(
         station_version_expr("ended_at").alias("end_station_version"),
         pl.col("start_station_name").replace(station_mapping),
         pl.col("end_station_name").replace(station_mapping),
-        pl.col("usertype").replace(CUSTOMER_MAPPING),
-        pl.col("gender").replace(GENDER_MAPPING),
+        pl.col("user_type").replace(CUSTOMER_MAPPING),
+        pl.col("gender").cast(pl.String).replace(GENDER_MAPPING),
     )
 
 
