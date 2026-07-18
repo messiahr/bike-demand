@@ -42,7 +42,7 @@ TRIP_COLUMN_MAPPING = {
     "end station latitude": "end_lat",
     "end station longitude": "end_lng",
     "bikeid": "bike_id",
-    "usertype": "member_casual",
+    "usertype": "user_type",
     "birth year": "birth_year",
     "postal code": "postal_code",
 }

@@ -137,7 +137,7 @@ def test_normalize_trips_maps_station_names() -> None:
             "ended_at": [datetime(2024, 1, 1, 12, 30)],
             "start_station_name": ["Mass Ave At Boylston St"],
             "end_station_name": ["Central Square"],
-            "usertype": ["subscriber"],
+            "user_type": ["subscriber"],
             "gender": ["1"],
         }
     )
@@ -157,14 +157,14 @@ def test_normalize_trips_maps_usertype() -> None:
             "ended_at": [datetime(2024, 1, 1, 12, 30)] * 4,
             "start_station_name": ["X"] * 4,
             "end_station_name": ["Y"] * 4,
-            "usertype": ["subscriber", "customer", "member", "casual"],
+            "user_type": ["subscriber", "customer", "member", "casual"],
             "gender": ["0", "0", "0", "0"],
         }
     )
     mapping = {"X": "x", "Y": "y"}
     result = normalize_trips(_dummy_version_expr, mapping, trips).collect()
 
-    assert result["usertype"].to_list() == ["member", "casual", "member", "casual"]
+    assert result["user_type"].to_list() == ["member", "casual", "member", "casual"]
 
 
 def test_normalize_trips_maps_gender() -> None:
@@ -174,7 +174,7 @@ def test_normalize_trips_maps_gender() -> None:
             "ended_at": [datetime(2024, 1, 1, 12, 30)] * 3,
             "start_station_name": ["X"] * 3,
             "end_station_name": ["Y"] * 3,
-            "usertype": ["member"] * 3,
+            "user_type": ["member"] * 3,
             "gender": ["0", "1", "2"],
         }
     )
@@ -194,7 +194,7 @@ def test_normalize_trips_adds_station_version_columns() -> None:
             "ended_at": [datetime(2024, 6, 15, 12, 0)],
             "start_station_name": ["X"],
             "end_station_name": ["Y"],
-            "usertype": ["member"],
+            "user_type": ["member"],
             "gender": ["0"],
         }
     )
@@ -315,7 +315,7 @@ def test_standardize_stations_full_pipeline() -> None:
             "ended_at": [datetime(2024, 1, 1, 12, 30)],
             "start_station_name": ["Mass Ave At Boylston St"],
             "end_station_name": ["Central Square"],
-            "usertype": ["subscriber"],
+            "user_type": ["subscriber"],
             "gender": ["1"],
         }
     )
@@ -325,7 +325,7 @@ def test_standardize_stations_full_pipeline() -> None:
     assert result.shape[0] == 1
     assert result["start_station_name"][0] == "boylston st at mass ave"
     assert result["end_station_name"][0] == "central sq"
-    assert result["usertype"][0] == "member"
+    assert result["user_type"][0] == "member"
     assert result["gender"][0] == "male"
     assert result["start_station_total_docks"][0] == 15
     assert result["end_station_total_docks"][0] == 20
@@ -350,7 +350,7 @@ def test_standardize_stations_preserves_unmatched_trips() -> None:
             "ended_at": [datetime(2024, 1, 1, 12, 30)],
             "start_station_name": ["Unknown Station"],
             "end_station_name": ["Known Station"],
-            "usertype": ["casual"],
+            "user_type": ["casual"],
             "gender": ["2"],
         }
     )
