@@ -19,6 +19,6 @@ run:
 	@uv run python -m streamlit run main.py
 
 lint:
-	@uv run ruff format
-	@uv run ruff check --fix src tests
+	@ruff format
+	@ruff check --fix src tests
 	@uv run mypy . --ignore-missing-imports
