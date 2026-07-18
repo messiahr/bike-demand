@@ -98,8 +98,8 @@ def normalize_trips(
         pl.col("end_station_name").replace(station_mapping),
         pl.col("member_casual").replace(CUSTOMER_MAPPING),
     ]
-    if "gender" in trips.columns:
-        exprs.append(pl.col("gender").replace(GENDER_MAPPING))
+    if "gender" in trips.collect_schema().names():
+        exprs.append(pl.col("gender").cast(pl.String).replace(GENDER_MAPPING))
     return trips.with_columns(exprs)
 
 
