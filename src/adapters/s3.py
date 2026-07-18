@@ -2,8 +2,17 @@
 
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 import requests
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+def _get_with_retry(url: str, timeout: int = 30, **kwargs: Any) -> requests.Response:
+    response = requests.get(url, timeout=timeout, **kwargs)
+    response.raise_for_status()
+    return response
 
 
 def list_bucket_files(bucket_url: str, prefix: str = "") -> list[str]:
@@ -28,11 +37,8 @@ def list_bucket_files(bucket_url: str, prefix: str = "") -> list[str]:
         if continuation_token:
             params["continuation-token"] = continuation_token
 
-        response = requests.get(bucket_url, params=params, timeout=30)
-        response.raise_for_status()
-
+        response = _get_with_retry(bucket_url, params=params)
         root = ET.fromstring(response.content)
-        # S3 XML uses namespace — extract it dynamically
         ns = {"s3": root.tag.split("}")[0].strip("{")} if "}" in root.tag else None
 
         contents = root.findall("s3:Contents", ns) if ns else root.findall("Contents")
@@ -41,7 +47,6 @@ def list_bucket_files(bucket_url: str, prefix: str = "") -> list[str]:
             if key_el is not None and key_el.text and not key_el.text.endswith("/"):
                 keys.append(key_el.text)
 
-        # Check if there are more results (S3 returns max 1000 per page)
         is_truncated = root.find("s3:IsTruncated", ns) if ns else root.find("IsTruncated")
         if is_truncated is not None and is_truncated.text == "true":
             token_el = (
@@ -77,7 +82,6 @@ def download(url: str, dest: Path) -> Path:
     if dest.exists():
         return dest
 
-    response = requests.get(url, timeout=60)
-    response.raise_for_status()
+    response = _get_with_retry(url, timeout=60)
     dest.write_bytes(response.content)
     return dest
