@@ -1,4 +1,3 @@
-import abc
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime
@@ -63,26 +62,7 @@ STATION_COLUMN_MAPPING = {
 }
 
 
-class AbstractRawTripRepo(abc.ABC):
-    """Abstract base class for a raw data repository for Bluebikes data.
-
-    This class returns builders when possible to take advantage of lazy evaluation.
-    Builders are callables that return a polars.LazyFrame when called."""
-
-    @abc.abstractmethod
-    def update(self) -> None:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def trips(self) -> pl.LazyFrame:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def stations(self) -> pl.LazyFrame:
-        raise NotImplementedError
-
-
-class BlueBikesRepository(AbstractRawTripRepo):
+class BlueBikesRepository:
     def __init__(self) -> None:
         self.stations_path = PROCESSED_DIR / "all_stations.parquet"
         self.trips_path = PROCESSED_DIR / "all_trips.parquet"
@@ -93,9 +73,8 @@ class BlueBikesRepository(AbstractRawTripRepo):
     def trips(self) -> pl.LazyFrame:
         return pl.scan_parquet(self.trips_path)
 
-    # Exposes station versioning information.
-
-    def get_station_version_expr(self, time_col: str) -> pl.Expr:
+    @staticmethod
+    def get_station_version_expr(time_col: str) -> pl.Expr:
         snapshots = sorted(
             STATION_SNAPSHOTS,
             key=lambda s: s.effective_from,
