@@ -15,5 +15,7 @@ RawWeatherSchema = pa.DataFrameSchema(
         "pres": pa.Column(pl.Float64, nullable=True),
         "tsun": pa.Column(pl.Float64, nullable=True),
         "coco": pa.Column(pl.Float64, nullable=True),
-    }
+    },
+    add_missing_columns=True,
+    coerce=True,
 )
