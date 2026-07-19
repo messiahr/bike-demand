@@ -38,37 +38,73 @@ def _fill_missing_columns(df: pl.DataFrame) -> pl.DataFrame:
     return df
 
 
-class WeatherRepository:
-    def get_weather_data(self, start_date: date, end_date: date) -> pl.DataFrame:
-        stations = ms.stations.nearby(BOSTON, limit=4)
-        ts = ms.hourly(stations, start_date, end_date)
-        df = ms.interpolate(ts, BOSTON).fetch()
+def _fetch_weather_data(start_date: date, end_date: date) -> pl.DataFrame:
+    """Fetch hourly weather data from Meteostat for the given date range."""
+    stations = ms.stations.nearby(BOSTON, limit=4)
+    ts = ms.hourly(stations, start_date, end_date)
+    df = ms.interpolate(ts, BOSTON).fetch()
 
-        if df is None or df.empty:
-            raise ValueError("No data found for the specified location and time range.")
+    if df is None or df.empty:
+        raise ValueError("No data found for the specified location and time range.")
 
-        polars_df = (
-            pl.from_pandas(df, include_index=True)
-            .rename(_METEOSTAT_RENAME)
-            .pipe(_fill_missing_columns)
+    polars_df = (
+        pl.from_pandas(df, include_index=True).rename(_METEOSTAT_RENAME).pipe(_fill_missing_columns)
+    )
+    return RawWeatherSchema.validate(polars_df)
+
+
+def _merge_into_cache(new_data: pl.DataFrame) -> None:
+    """Merge new data into the cache, deduplicating by time (keeping latest)."""
+    if CACHE_PATH.exists():
+        existing = pl.read_parquet(CACHE_PATH)
+        combined = pl.concat([existing, new_data], how="diagonal_relaxed").unique(
+            subset=["time"], keep="last"
         )
-        result = RawWeatherSchema.validate(polars_df)
+    else:
+        combined = new_data
+    combined.write_parquet(CACHE_PATH)
 
-        if CACHE_PATH.exists():
-            existing = pl.scan_parquet(CACHE_PATH).collect()
-            combined = pl.concat([existing, result], how="diagonal_relaxed").unique(
-                subset=["time"], keep="last"
-            )
-        else:
-            combined = result
-        combined.write_parquet(CACHE_PATH)
 
-        return result
+class WeatherRepository:
+    """Returns hourly weather data, using cache to minimize API calls."""
 
     def weather(self, start_date: date, end_date: date) -> pl.LazyFrame:
         if CACHE_PATH.exists():
-            cached = pl.scan_parquet(CACHE_PATH)
-            cached_max = cached.select(pl.col("time").max()).collect().item()
-            if cached_max is not None and cached_max >= end_date:
-                return cached.filter((pl.col("time") >= start_date) & (pl.col("time") <= end_date))
-        return self.get_weather_data(start_date, end_date).lazy()
+            cache = pl.scan_parquet(CACHE_PATH)
+
+            bounds = cache.select(
+                pl.col("time").min().alias("cached_min"),
+                pl.col("time").max().alias("cached_max"),
+            ).collect()
+            cached_min = bounds["cached_min"][0]
+            cached_max = bounds["cached_max"][0]
+
+            result = cache.filter(
+                (pl.col("time") >= max(start_date, cached_min))
+                & (pl.col("time") <= min(cached_max, end_date))
+            )
+
+            new_parts = []
+
+            if start_date < cached_min:
+                part = _fetch_weather_data(start_date, cached_min)
+                new_parts.append(part)
+                result = pl.concat(
+                    [part.lazy(), result], how="diagonal_relaxed"
+                ).unique(subset=["time"], keep="last")
+
+            if end_date > cached_max:
+                part = _fetch_weather_data(cached_max, end_date)
+                new_parts.append(part)
+                result = pl.concat(
+                    [result, part.lazy()], how="diagonal_relaxed"
+                ).unique(subset=["time"], keep="last")
+
+            if new_parts:
+                _merge_into_cache(pl.concat(new_parts, how="diagonal_relaxed"))
+
+            return result
+
+        new_data = _fetch_weather_data(start_date, end_date)
+        _merge_into_cache(new_data)
+        return new_data.lazy()
