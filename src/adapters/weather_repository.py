@@ -12,6 +12,31 @@ ms.config.block_large_requests = False
 
 CACHE_PATH = PROCESSED_DIR / "weather.parquet"
 
+# Meteostat returns 'rhum' but we rename to 'rhu' for consistency.
+# Some stations don't report every parameter, so columns like dwpt, snow,
+# wpgt, tsun, and coco may be absent from the API response.
+_METEOSTAT_RENAME = {"rhum": "rhu"}
+
+_WEATHER_METRICS = {
+    "temp",
+    "dwpt",
+    "rhu",
+    "prcp",
+    "snow",
+    "wdir",
+    "wspd",
+    "wpgt",
+    "pres",
+    "tsun",
+    "coco",
+}
+
+
+def _fill_missing_columns(df: pl.DataFrame) -> pl.DataFrame:
+    for col in _WEATHER_METRICS - set(df.columns):
+        df = df.with_columns(pl.lit(None).cast(pl.Float64).alias(col))
+    return df
+
 
 class WeatherRepository:
     def get_weather_data(self, start_date: date, end_date: date) -> pl.DataFrame:
@@ -22,7 +47,11 @@ class WeatherRepository:
         if df is None or df.empty:
             raise ValueError("No data found for the specified location and time range.")
 
-        polars_df = pl.from_pandas(df)
+        polars_df = (
+            pl.from_pandas(df, include_index=True)
+            .rename(_METEOSTAT_RENAME)
+            .pipe(_fill_missing_columns)
+        )
         result = RawWeatherSchema.validate(polars_df)
 
         if CACHE_PATH.exists():
