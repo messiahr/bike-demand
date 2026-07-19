@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 import polars as pl
@@ -23,8 +24,12 @@ def bluebikes_import() -> tuple[pl.LazyFrame, pl.LazyFrame]:
 
 @task
 def weather_import(trips: pl.LazyFrame) -> pl.LazyFrame:
-    min_date = trips.select(pl.col("started_at").min()).collect().item().date()
-    max_date = trips.select(pl.col("ended_at").max()).collect().item().date()
+    dates = trips.select(
+        pl.col("started_at").min().alias("min_date"),
+        pl.col("ended_at").max().alias("max_date"),
+    ).collect()
+    min_date = dates["min_date"][0].date()
+    max_date = dates["max_date"][0].date() + timedelta(days=1)
     return WeatherRepository().weather(min_date, max_date)
 
 
