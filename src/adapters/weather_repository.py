@@ -89,16 +89,16 @@ class WeatherRepository:
             if start_date < cached_min:
                 part = _fetch_weather_data(start_date, cached_min)
                 new_parts.append(part)
-                result = pl.concat(
-                    [part.lazy(), result], how="diagonal_relaxed"
-                ).unique(subset=["time"], keep="last")
+                result = pl.concat([part.lazy(), result], how="diagonal_relaxed").unique(
+                    subset=["time"], keep="last"
+                )
 
             if end_date > cached_max:
                 part = _fetch_weather_data(cached_max, end_date)
                 new_parts.append(part)
-                result = pl.concat(
-                    [result, part.lazy()], how="diagonal_relaxed"
-                ).unique(subset=["time"], keep="last")
+                result = pl.concat([result, part.lazy()], how="diagonal_relaxed").unique(
+                    subset=["time"], keep="last"
+                )
 
             if new_parts:
                 _merge_into_cache(pl.concat(new_parts, how="diagonal_relaxed"))

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-import numpy as np
+import matplotlib as mpl
 import polars as pl
 import pydeck as pdk
 import streamlit as st
@@ -83,3 +83,54 @@ if hour_data.height == 0:
     st.info("No trips started during this hour.")
     st.stop()
 
+# --- deck ---
+demand_vals = hour_data["demand"]
+d_min, d_max = int(demand_vals.min()), int(demand_vals.max())
+
+cmap = mpl.colormaps["viridis"]
+norm = mpl.colors.Normalize(vmin=d_min, vmax=d_max)
+
+norm_vals = norm(demand_vals.to_numpy())
+rgba_vals = [
+    [round(r), round(g), round(b), 150] for [r, g, b, _] in cmap(norm_vals) * 255
+]  # set a (opacity) to a constant
+
+hour_data = hour_data.with_columns(pl.col("station").str.to_titlecase()).to_pandas()
+
+hour_data["fill_color"] = rgba_vals
+print(rgba_vals)
+print(hour_data)
+
+elevation_scale = 5 if d_max > 50 else 30 if d_max > 10 else 100
+
+layer = pdk.Layer(
+    "ColumnLayer",
+    hour_data,
+    get_position=["lng", "lat"],
+    get_elevation="demand",
+    elevation_scale=elevation_scale,
+    radius=60,
+    get_fill_color="fill_color",
+    get_line_color=[255, 255, 255, 100],
+    get_line_width=1,
+    pickable=True,
+    auto_highlight=True,
+    extruded=True,
+    coverage=0.8,
+)
+
+deck = pdk.Deck(
+    layers=[layer],
+    initial_view_state=pdk.ViewState(
+        latitude=BOSTON_CENTER[0],
+        longitude=BOSTON_CENTER[1],
+        zoom=12,
+        pitch=50,
+        bearing=20,
+    ),
+    tooltip={"html": "<b>{station}</b><br>{demand} trips"},
+    map_provider="carto",
+    map_style="light",
+)
+
+st.pydeck_chart(deck, width="stretch")

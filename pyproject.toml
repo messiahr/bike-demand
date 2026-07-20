@@ -12,6 +12,7 @@ dependencies = [
   "optuna>=4.6.0",
   "pandera>=0.32.0",
   "polars>=1.41.2",
+  "pydeck>=0.9.1",
   "pre-commit>=4.6.0",
   "prefect>=3.7.7",
   "pytest>=9.1.1",
