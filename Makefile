@@ -2,7 +2,7 @@
 
 PYTHON = python3
 
-.PHONY: help setup run commit bump ingest
+.PHONY: help setup run
 
 .DEFAULT_GOAL = help
 
