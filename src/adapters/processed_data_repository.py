@@ -24,5 +24,9 @@ class ProcessedDataRepository:
         try:
             self._s3.head_object(Bucket=self._bucket, Key=self._key)
             return True
-        except (self._s3.exceptions.ClientError, ParamValidationError):
+        except self._s3.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return False
+            raise
+        except ParamValidationError:
             return False

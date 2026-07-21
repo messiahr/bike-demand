@@ -30,11 +30,11 @@ st.caption(
 )
 
 if not processed_data_repository.exists():
-    st.error("Data file not found in S3.")
+    st.error(f"Data file not found in S3: `{processed_data_repository.data_path}`")
     st.stop()
 
 if not model_repository.exists():
-    st.error("No trained model found in S3.")
+    st.error(f"No trained model found in S3: `{model_repository.model_path}`")
     st.stop()
 
 
