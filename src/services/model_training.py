@@ -1,8 +1,11 @@
 # ruff: noqa: N806, N803 (ML convention: X/y feature/target naming)
 """Train a bike-demand prediction model using LightGBM, Optuna, and MLFlow."""
 
+import math
 import os
+import pickle
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import lightgbm as lgb
 import mlflow
@@ -21,6 +24,7 @@ TEST_MONTHS = 3
 OPTUNA_TRIALS = 20
 EARLY_STOPPING_ROUNDS = 50
 _THREADS = max(1, min(4, (os.cpu_count() or 1)))
+MODEL_PICKLE_PATH = OUTPUT_DIR / "model.pickle"
 
 FEATURE_COLS = [
     "hour",
@@ -39,7 +43,7 @@ FEATURE_COLS = [
     "snow",
 ]
 
-_WEATHER_NULL_FILL: dict[str, int | pl.Expr] = {
+WEATHER_NULL_FILL: dict[str, int | pl.Expr] = {
     "prcp": 0,
     "snow": 0,
     "temp": pl.col("temp").mean(),
@@ -53,6 +57,50 @@ def _log(msg: str) -> None:
     print(msg, flush=True)
 
 
+def save_model_pickle(model: lgb.LGBMRegressor, path: Path | None = None) -> Path:
+    p = MODEL_PICKLE_PATH if path is None else path
+    with open(p, "wb") as f:
+        pickle.dump(model, f)
+    _log(f"Model saved to {p}")
+    return p
+
+
+def load_model_pickle(path: Path | None = None) -> lgb.LGBMRegressor:
+    p = MODEL_PICKLE_PATH if path is None else path
+    with open(p, "rb") as f:
+        return pickle.load(f)
+
+
+def get_best_params() -> dict[str, object] | None:
+    """Return tuned hyperparameters from the best MLflow run, or None.
+
+    Caller must configure mlflow tracking URI and experiment first.
+    """
+    try:
+        runs = mlflow.search_runs(order_by=["metrics.rmse ASC"])
+    except Exception:
+        _log("Failed to query MLflow runs.")
+        return None
+
+    if runs.empty:
+        return None
+
+    best_run = runs.iloc[0]
+    params: dict[str, object] = {}
+    for col in runs.columns:
+        if not col.startswith("params.tuned_"):
+            continue
+        key = col.removeprefix("params.tuned_")
+        val = best_run[col]
+        if isinstance(val, float) and math.isnan(val):
+            continue
+        params[key] = (
+            float(val) if val.isinstance(str) and val.replace(".", "", 1).isnumeric() else val
+        )
+
+    return params if params else None
+
+
 def engineer_features(df: pl.LazyFrame) -> pl.DataFrame:
     return (
         df.group_by(
@@ -64,7 +112,7 @@ def engineer_features(df: pl.LazyFrame) -> pl.DataFrame:
             pl.col("start_lat").first().alias("lat"),
             pl.col("start_lng").first().alias("lng"),
             pl.col("start_station_total_docks").first().alias("total_docks"),
-            *[pl.col(c).first() for c in _WEATHER_NULL_FILL],
+            *[pl.col(c).first() for c in WEATHER_NULL_FILL],
         )
         .with_columns(
             pl.col("datetime").dt.hour().alias("hour"),
@@ -72,7 +120,7 @@ def engineer_features(df: pl.LazyFrame) -> pl.DataFrame:
             pl.col("datetime").dt.month().alias("month"),
             pl.col("datetime").dt.year().alias("year"),
             pl.col("datetime").dt.weekday().is_in([5, 6]).alias("is_weekend"),
-            *[pl.col(col).fill_null(fill) for col, fill in _WEATHER_NULL_FILL.items()],
+            *[pl.col(col).fill_null(fill) for col, fill in WEATHER_NULL_FILL.items()],
         )
         .drop_nulls()
         .sort("datetime")
@@ -200,14 +248,21 @@ def run(trials: int = OPTUNA_TRIALS, test_months: int = TEST_MONTHS) -> None:
             }
         )
 
-        _log(f"\nTuning ({trials} trials, {_THREADS} threads) ...")
-        best_params = tune_hyperparameters(X_train, y_train, X_val, y_val, trials)
+        existing_params = get_best_params()
+        if existing_params:
+            _log("Found existing tuned parameters; skipping hyperparameter search.")
+            best_params = existing_params
+        else:
+            _log(f"\nTuning ({trials} trials, {_THREADS} threads) ...")
+            best_params = tune_hyperparameters(X_train, y_train, X_val, y_val, trials)
+
         mlflow.log_params({f"tuned_{k}": v for k, v in best_params.items()})
         _log("Training final model ...")
         model = train_final(X_full, y_full, best_params)
         metrics = evaluate(model, X_test, y_test)
         mlflow.log_metrics(metrics)
         mlflow.lightgbm.log_model(model, "model")
+        save_model_pickle(model)
 
         _log(f"\nRun: {mlflow_run.info.run_id}")
         _log(f"  RMSE={metrics['rmse']:.4f}  MAE={metrics['mae']:.4f}  R²={metrics['r2']:.4f}")
