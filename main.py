@@ -86,7 +86,7 @@ def load_prediction_data(start: datetime, end: datetime) -> pl.DataFrame:
     predicted_series = pl.Series("predicted", np.clip(predictions, 0, None).round().astype(int))
     return data.with_columns(
         predicted_series,
-        (predicted_series - pl.col("actual")).alias("error"),
+        (pl.col("actual") - predicted_series).alias("error"),
     )
 
 
