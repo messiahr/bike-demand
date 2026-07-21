@@ -1,6 +1,6 @@
 import boto3
 import polars as pl
-from botocore.exceptions import ClientError, ParamValidationError
+from botocore.exceptions import ParamValidationError
 
 from config import AWS_BUCKET, AWS_REGION
 
