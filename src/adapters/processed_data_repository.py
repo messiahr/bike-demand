@@ -1,5 +1,6 @@
 import boto3
 import polars as pl
+from botocore.exceptions import ClientError, ParamValidationError
 
 from config import AWS_BUCKET, AWS_REGION
 
@@ -23,5 +24,5 @@ class ProcessedDataRepository:
         try:
             self._s3.head_object(Bucket=self._bucket, Key=self._key)
             return True
-        except self._s3.exceptions.ClientError:
+        except (self._s3.exceptions.ClientError, ParamValidationError):
             return False

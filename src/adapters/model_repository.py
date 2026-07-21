@@ -2,6 +2,7 @@ import pickle
 
 import boto3
 import lightgbm as lgb
+from botocore.exceptions import ClientError, ParamValidationError
 
 from config import AWS_BUCKET, AWS_REGION
 
@@ -29,5 +30,5 @@ class ModelRepository:
         try:
             self._s3.head_object(Bucket=self._bucket, Key=self._key)
             return True
-        except self._s3.exceptions.ClientError:
+        except (self._s3.exceptions.ClientError, ParamValidationError):
             return False
