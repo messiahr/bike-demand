@@ -23,11 +23,7 @@ st.set_page_config(
 )
 
 st.title("Boston Bluebikes Demand Prediction")
-st.caption(
-    "Column height = actual trips. "
-    "Colour = prediction error — blue for under-predicted, white for accurate, "
-    "red for over-predicted."
-)
+st.caption("Column height: actual trips. Color: prediction error.")
 
 if not processed_data_repository.exists():
     st.error(f"Data file not found in S3: `{processed_data_repository.data_path}`")
@@ -214,8 +210,8 @@ with st.sidebar.expander("About this app"):
     **Boston Bluebikes Demand Prediction** compares actual bike-share trip
     counts against machine-learning predictions for every station-hour.
 
-    **Model** — LightGBM regressor with hyperparameters tuned via Optuna
+    **Model**: LightGBM regressor with hyperparameters tuned via Optuna
     and tracked in MLflow. Features include station, weather, and date information.
 
-    **Data** — Bluebikes trip records joined with weather observations from Meteostat.
+    **Data**: Bluebikes trip records joined with weather observations from Meteostat.
     """)
