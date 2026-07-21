@@ -3,9 +3,7 @@
 
 import math
 import os
-import pickle
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import lightgbm as lgb
 import mlflow
@@ -14,9 +12,9 @@ import optuna
 import polars as pl
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-from config import OUTPUT_DIR
+from src.adapters.model_repository import ModelRepository
+from src.adapters.processed_data_repository import ProcessedDataRepository
 
-DATA_PATH = OUTPUT_DIR / "all_trips_standardized.parquet"
 MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
 MLFLOW_EXPERIMENT = "bike-demand"
 RANDOM_STATE = 42
@@ -24,7 +22,6 @@ TEST_MONTHS = 3
 OPTUNA_TRIALS = 20
 EARLY_STOPPING_ROUNDS = 50
 _THREADS = max(1, min(4, (os.cpu_count() or 1)))
-MODEL_PICKLE_PATH = OUTPUT_DIR / "model.pickle"
 
 FEATURE_COLS = [
     "hour",
@@ -55,20 +52,6 @@ WEATHER_NULL_FILL: dict[str, int | pl.Expr] = {
 
 def _log(msg: str) -> None:
     print(msg, flush=True)
-
-
-def save_model_pickle(model: lgb.LGBMRegressor, path: Path | None = None) -> Path:
-    p = MODEL_PICKLE_PATH if path is None else path
-    with open(p, "wb") as f:
-        pickle.dump(model, f)
-    _log(f"Model saved to {p}")
-    return p
-
-
-def load_model_pickle(path: Path | None = None) -> lgb.LGBMRegressor:
-    p = MODEL_PICKLE_PATH if path is None else path
-    with open(p, "rb") as f:
-        return pickle.load(f)
 
 
 def get_best_params() -> dict[str, object] | None:
@@ -216,7 +199,7 @@ def run(trials: int = OPTUNA_TRIALS, test_months: int = TEST_MONTHS) -> None:
     mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
     _log("Loading data ...")
-    data = engineer_features(pl.scan_parquet(DATA_PATH))
+    data = engineer_features(ProcessedDataRepository().load())
     _log(f"  {data.height:,} rows, {data.width} columns")
 
     test_cutoff = datetime.now() - timedelta(days=test_months * 30)
@@ -262,7 +245,7 @@ def run(trials: int = OPTUNA_TRIALS, test_months: int = TEST_MONTHS) -> None:
         metrics = evaluate(model, X_test, y_test)
         mlflow.log_metrics(metrics)
         mlflow.lightgbm.log_model(model, "model")
-        save_model_pickle(model)
+        ModelRepository().save(model)
 
         _log(f"\nRun: {mlflow_run.info.run_id}")
         _log(f"  RMSE={metrics['rmse']:.4f}  MAE={metrics['mae']:.4f}  R²={metrics['r2']:.4f}")

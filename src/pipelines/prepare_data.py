@@ -1,16 +1,13 @@
 from datetime import timedelta
-from pathlib import Path
 
 import polars as pl
 from prefect import flow, task
 
-from config import OUTPUT_DIR
 from src.adapters.bluebikes_repository import BlueBikesRepository
+from src.adapters.processed_data_repository import ProcessedDataRepository
 from src.adapters.weather_repository import WeatherRepository
 from src.processing.merge_weather import merge_trips_with_weather
 from src.processing.standardize_bluebikes_data import standardize_stations
-
-OUTPUT_PATH = OUTPUT_DIR / "all_trips_standardized.parquet"
 
 
 @task
@@ -45,12 +42,13 @@ def final_merges(
 
 
 @flow
-def main() -> Path:
+def main() -> str:
     trips, stations = bluebikes_import()
     weather = weather_import(trips)
     merged = final_merges(trips, stations, weather)
-    merged.sink_parquet(OUTPUT_PATH)
-    return OUTPUT_PATH
+    processed_data_repository = ProcessedDataRepository()
+    processed_data_repository.save(merged)
+    return processed_data_repository.data_path
 
 
 if __name__ == "__main__":

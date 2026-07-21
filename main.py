@@ -6,15 +6,16 @@ import polars as pl
 import pydeck as pdk
 import streamlit as st
 
-from config import OUTPUT_DIR
+from src.adapters.model_repository import ModelRepository
+from src.adapters.processed_data_repository import ProcessedDataRepository
 from src.services.model_training import (
     FEATURE_COLS,
-    MODEL_PICKLE_PATH,
     WEATHER_NULL_FILL,
-    load_model_pickle,
 )
 
-DATA_PATH = OUTPUT_DIR / "all_trips_standardized.parquet"
+processed_data_repository = ProcessedDataRepository()
+model_repository = ModelRepository()
+DATA_PATH = processed_data_repository.data_path
 BOSTON_CENTER = (42.3601, -71.0589)
 
 st.set_page_config(
@@ -29,18 +30,18 @@ st.caption(
     "red for over-predicted."
 )
 
-if not DATA_PATH.exists():
-    st.error("Data file not found at `data/output/all_trips_standardized.parquet`.")
+if not processed_data_repository.exists():
+    st.error("Data file not found in S3.")
     st.stop()
 
-if not MODEL_PICKLE_PATH.exists():
-    st.error("No trained model found at `data/output/model.pickle`.")
+if not model_repository.exists():
+    st.error("No trained model found in S3.")
     st.stop()
 
 
 @st.cache_resource
 def load_model():
-    return load_model_pickle()
+    return model_repository.load()
 
 
 model = load_model()
