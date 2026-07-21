@@ -15,7 +15,6 @@ from src.services.model_training import (
 
 processed_data_repository = ProcessedDataRepository()
 model_repository = ModelRepository()
-DATA_PATH = processed_data_repository.data_path
 BOSTON_CENTER = (42.3601, -71.0589)
 
 st.set_page_config(
@@ -48,8 +47,8 @@ model = load_model()
 
 
 @st.cache_data(ttl=3600)
-def load_prediction_data(path: str, start: datetime, end: datetime) -> pl.DataFrame:
-    lf = pl.scan_parquet(path).filter(pl.col("started_at").is_between(start, end))
+def load_prediction_data(start: datetime, end: datetime) -> pl.DataFrame:
+    lf = processed_data_repository.load().filter(pl.col("started_at").is_between(start, end))
 
     data = (
         lf.group_by(
@@ -111,7 +110,7 @@ start_dt = datetime.combine(start_d, datetime.min.time())
 end_dt = datetime.combine(end_d, datetime.min.time()) + timedelta(days=1) - timedelta(seconds=1)
 
 with st.spinner("Computing predictions..."):
-    data = load_prediction_data(str(DATA_PATH), start_dt, end_dt)
+    data = load_prediction_data(start_dt, end_dt)
 
 if data.height == 0:
     st.warning("No data available for the selected date range.")
