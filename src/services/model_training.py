@@ -21,7 +21,7 @@ RANDOM_STATE = 42
 TEST_MONTHS = 3
 OPTUNA_TRIALS = 20
 EARLY_STOPPING_ROUNDS = 50
-_THREADS = max(1, min(4, (os.cpu_count() or 1)))
+_THREADS = os.cpu_count() or 1
 
 FEATURE_COLS = [
     "hour",
@@ -77,9 +77,12 @@ def get_best_params() -> dict[str, object] | None:
         val = best_run[col]
         if isinstance(val, float) and math.isnan(val):
             continue
-        params[key] = (
-            float(val) if val.isinstance(str) and val.replace(".", "", 1).isnumeric() else val
-        )
+        val_str = str(val)
+        if val_str.replace(".", "", 1).isnumeric():
+            num = float(val_str)
+            params[key] = int(num) if num.is_integer() else num
+        else:
+            params[key] = val
 
     return params if params else None
 
@@ -244,7 +247,7 @@ def run(trials: int = OPTUNA_TRIALS, test_months: int = TEST_MONTHS) -> None:
         model = train_final(X_full, y_full, best_params)
         metrics = evaluate(model, X_test, y_test)
         mlflow.log_metrics(metrics)
-        mlflow.lightgbm.log_model(model, "model")
+        mlflow.lightgbm.log_model(model, name="model")
         ModelRepository().save(model)
 
         _log(f"\nRun: {mlflow_run.info.run_id}")
